@@ -8,8 +8,13 @@ import (
 	"github.com/surafelbkassa/go-task-manager/models"
 )
 
-func GetTask(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"tasks": data.GetTask()})
+func GetTasks(c *gin.Context) {
+	tasks, err := data.GetTasks()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"tasks": tasks})
 }
 func GetTaskById(ctx *gin.Context) {
 	id := ctx.Param("id")
@@ -23,11 +28,15 @@ func GetTaskById(ctx *gin.Context) {
 func CreateTask(c *gin.Context) {
 	var newTask models.Task
 	if err := c.ShouldBindJSON(&newTask); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	data.CreateTask(newTask)
-	c.JSON(http.StatusCreated, gin.H{"message": "Task created successfully", "task": newTask})
+	createdTask, err := data.CreateTask(c.Request.Context(), newTask)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"message": "Task created successfully", "task": createdTask})
 }
 func UpdatedTask(c *gin.Context) {
 	var updatedTask models.Task

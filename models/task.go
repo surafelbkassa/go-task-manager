@@ -1,17 +1,17 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
 
 type Task struct {
-	ID          string    `json:"id"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	DueDate     time.Time `json:"due_date"`
-	Status      string    `json:"status"`
-}
-
-var tasks = []Task{
-	{ID: "1", Title: "Task 1", Description: "Description for Task 1", DueDate: time.Now().Add(24 * time.Hour), Status: "Pending"},
-	{ID: "2", Title: "Task 2", Description: "Description for Task 2", DueDate: time.Now().Add(48 * time.Hour), Status: "In Progress"},
-	{ID: "3", Title: "Task 3", Description: "Description for Task 3", DueDate: time.Now().Add(72 * time.Hour), Status: "Completed"},
+	ID          primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+	Title       string             `json:"title bson:"title"`
+	Description string             `json:"description" bson:"description"`
+	DueDate     time.Time          `json:"due_date" bson:"due_date"`
+	Status      string             `json:"status" bson:"status"`
+	CreatedAt   time.Time          `json:"created_at" bson:"created_at"`
+	UpdatedAt   time.Time          `json:"updated_at" bson:"updated_at"`
 }
