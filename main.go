@@ -10,6 +10,7 @@ import (
 
 func main() {
 	data.InitMongo()
+	data.InitMongoUser()
 	router := router.SetupRouter()
 	if err := router.Run("localhost:8080"); err != nil {
 		log.Fatal("Failed to start server:", err)
