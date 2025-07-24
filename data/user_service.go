@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/surafelbkassa/go-task-manager/models"
+	domain "github.com/surafelbkassa/go-task-manager/Domain"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -34,9 +34,9 @@ func InitMongoUser() {
 	fmt.Println("Connected to MongoDB for User Service!")
 }
 
-func RegisterUser(name, email, password string) (*models.User, error) {
+func RegisterUser(name, email, password string) (*domain.User, error) {
 	// Check if email exists
-	var existing models.User
+	var existing domain.User
 	err := Collection.FindOne(context.TODO(), bson.M{"email": email}).Decode(&existing)
 	if err == nil {
 		return nil, errors.New("user with this email already exists")
@@ -59,7 +59,7 @@ func RegisterUser(name, email, password string) (*models.User, error) {
 		role = "admin"
 	}
 
-	user := models.User{
+	user := domain.User{
 		ID:        primitive.NewObjectID(),
 		Name:      name,
 		Email:     email,
@@ -78,7 +78,7 @@ func RegisterUser(name, email, password string) (*models.User, error) {
 
 // ✅ LoginUser authenticates a user and returns a JWT
 func LoginUser(email, password string) (string, error) {
-	var user models.User
+	var user domain.User
 	err := Collection.FindOne(context.TODO(), bson.M{"email": email}).Decode(&user)
 	if err != nil {
 		return "", errors.New("invalid email or password")
@@ -93,7 +93,7 @@ func LoginUser(email, password string) (string, error) {
 	// Generate JWT
 	return GenerateJWT(&user)
 }
-func GenerateJWT(user *models.User) (string, error) {
+func GenerateJWT(user *domain.User) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id": user.ID.Hex(),
 		"name":    user.Name,

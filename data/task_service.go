@@ -7,7 +7,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/surafelbkassa/go-task-manager/models"
+	domain "github.com/surafelbkassa/go-task-manager/Domain"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -33,15 +33,15 @@ func InitMongo() {
 
 }
 
-func GetTasks() ([]models.Task, error) {
-	var tasks []models.Task
+func GetTasks() ([]domain.Task, error) {
+	var tasks []domain.Task
 	cursor, err := TaskCollection.Find(context.TODO(), bson.D{})
 	if err != nil {
 		return nil, err
 	}
 	defer cursor.Close(context.TODO())
 	for cursor.Next(context.TODO()) {
-		var task models.Task
+		var task domain.Task
 		if err := cursor.Decode(&task); err != nil {
 			log.Fatal(err)
 		}
@@ -50,12 +50,12 @@ func GetTasks() ([]models.Task, error) {
 	return tasks, nil
 }
 
-func GetTaskById(id string) (*models.Task, error) {
+func GetTaskById(id string) (*domain.Task, error) {
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return nil, errors.New("invalid task ID format")
 	}
-	var task models.Task
+	var task domain.Task
 	filter := bson.M{"_id": objID}
 	err = TaskCollection.FindOne(context.TODO(), filter).Decode(&task)
 	if err != nil {
@@ -64,7 +64,7 @@ func GetTaskById(id string) (*models.Task, error) {
 	return &task, nil
 }
 
-func UpdatedTask(id string, updatedTask models.Task) (*models.Task, error) {
+func UpdatedTask(id string, updatedTask domain.Task) (*domain.Task, error) {
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return nil, errors.New("invalid task ID format")
@@ -108,7 +108,7 @@ func DeleteTask(id string) error {
 	}
 	return nil
 }
-func CreateTask(ctx context.Context, task models.Task) (*models.Task, error) {
+func CreateTask(ctx context.Context, task domain.Task) (*domain.Task, error) {
 	task.ID = primitive.NewObjectID()
 	task.CreatedAt = time.Now()
 	task.UpdatedAt = time.Now()
