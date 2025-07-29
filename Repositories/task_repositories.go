@@ -77,7 +77,6 @@ func (r *TaskRepository) Update(id primitive.ObjectID, task domain.Task) (*domai
 		return nil, errors.New("task not found")
 	}
 
-	// ✅ Don't reuse `task` name
 	updatedTask, err := r.GetByID(id)
 	if err != nil {
 		return nil, err

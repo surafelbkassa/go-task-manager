@@ -14,17 +14,17 @@ type UserUseCaseInterface interface {
 }
 
 // UserUseCase implements user business rules
-type userUseCase struct {
+type UserUseCase struct {
 	repo   domain.UserRepository
 	hasher domain.PasswordHasher
 }
 
 // NewUserUseCase constructor
-func NewUserUseCase(r domain.UserRepository, h domain.PasswordHasher) *userUseCase {
-	return &userUseCase{repo: r, hasher: h}
+func NewUserUseCase(r domain.UserRepository, h domain.PasswordHasher) *UserUseCase {
+	return &UserUseCase{repo: r, hasher: h}
 }
 
-func (uc *userUseCase) RegisterUser(name, email, password string) error {
+func (uc *UserUseCase) RegisterUser(name, email, password string) error {
 	// check if user email already exists
 	existing, _ := uc.repo.GetByEmail(email)
 	if existing != nil {
@@ -46,7 +46,7 @@ func (uc *userUseCase) RegisterUser(name, email, password string) error {
 	return err
 }
 
-func (uc *userUseCase) LoginUser(email, password string) (*domain.User, error) {
+func (uc *UserUseCase) LoginUser(email, password string) (*domain.User, error) {
 	user, err := uc.repo.GetByEmail(email)
 	if err != nil {
 		return nil, errors.New("invalid credentials")
@@ -57,6 +57,6 @@ func (uc *userUseCase) LoginUser(email, password string) (*domain.User, error) {
 	return user, nil
 }
 
-func (uc *userUseCase) PromoteUser(userID primitive.ObjectID) (*domain.User, error) {
+func (uc *UserUseCase) PromoteUser(userID primitive.ObjectID) (*domain.User, error) {
 	return uc.repo.PromoteUser(userID)
 }
