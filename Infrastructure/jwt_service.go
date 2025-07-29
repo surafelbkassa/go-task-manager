@@ -1,26 +1,69 @@
 package Infrastructure
 
 import (
-	"os"
+	"errors"
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
-	domain "github.com/surafelbkassa/go-task-manager/Domain"
+	"github.com/golang-jwt/jwt/v5"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func GenerateToken(user *domain.User) (string, error) {
-	claims := jwt.MapClaims{
-		"user_id": user.ID.Hex(),
-		"email":   user.Email,
-		"role":    user.Role,
-		"exp":     time.Now().Add(72 * time.Hour).Unix(),
-	}
-	t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return t.SignedString([]byte(os.Getenv("JWT_SECRET")))
+type JWTService struct {
+	secretKey string
+	expiry    time.Duration
+}
+type JWTServiceInterface interface {
+	GenerateToken(userID primitive.ObjectID, role string) (string, error)
+	ValidateToken(tokenStr string) (*primitive.ObjectID, string, error)
 }
 
-func ValidateToken(tokenStr string) (*jwt.Token, error) {
-	return jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
-		return []byte(os.Getenv("JWT_SECRET")), nil
+func NewJWTService(secret string, duration time.Duration) JWTServiceInterface {
+	return &JWTService{
+		secretKey: secret,
+		expiry:    duration,
+	}
+}
+
+func (j *JWTService) GenerateToken(userID primitive.ObjectID, role string) (string, error) {
+	claims := jwt.MapClaims{
+		"user_id": userID.Hex(),
+		"role":    role,
+		"exp":     time.Now().Add(j.expiry).Unix(),
+	}
+	t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return t.SignedString([]byte(j.secretKey))
+}
+
+func (j *JWTService) ValidateToken(tokenStr string) (*primitive.ObjectID, string, error) {
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("unexpected signing method")
+		}
+		return []byte(j.secretKey), nil
 	})
+	if err != nil || !token.Valid {
+		return nil, "", errors.New("invalid token")
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, "", errors.New("invalid claims")
+	}
+
+	idStr, ok := claims["user_id"].(string)
+	if !ok {
+		return nil, "", errors.New("user ID missing in token")
+	}
+
+	role, ok := claims["role"].(string)
+	if !ok {
+		return nil, "", errors.New("role missing in token")
+	}
+
+	id, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		return nil, "", errors.New("invalid user ID in token")
+	}
+
+	return &id, role, nil
 }

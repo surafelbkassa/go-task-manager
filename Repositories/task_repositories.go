@@ -2,6 +2,7 @@ package Repositories
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	domain "github.com/surafelbkassa/go-task-manager/Domain"
@@ -12,43 +13,46 @@ import (
 
 type TaskRepository struct {
 	Coll *mongo.Collection
+	ctx  context.Context
 }
 
-func NewTaskRepository(c *mongo.Collection) *TaskRepository {
-	return &TaskRepository{Coll: c}
+func NewTaskRepository(ctx *mongo.Collection) *TaskRepository {
+	return &TaskRepository{
+		Coll: ctx,
+		ctx:  context.Background(),
+	}
 }
-
 func (r *TaskRepository) GetAll() ([]domain.Task, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	cur, err := r.Coll.Find(ctx, bson.D{})
+	cur, err := r.Coll.Find(r.ctx, bson.M{})
 	if err != nil {
 		return nil, err
 	}
+	defer cur.Close(r.ctx)
 	var tasks []domain.Task
-	if err := cur.All(ctx, &tasks); err != nil {
-		return nil, err
+	for cur.Next(r.ctx) {
+		var t domain.Task
+		if err := cur.Decode(&t); err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, t)
 	}
 	return tasks, nil
 }
 
 func (r *TaskRepository) GetByID(id primitive.ObjectID) (*domain.Task, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
 	var task domain.Task
-	if err := r.Coll.FindOne(ctx, bson.M{"_id": id}).Decode(&task); err != nil {
+	if err := r.Coll.FindOne(r.ctx, bson.M{"_id": id}).Decode(&task); err != nil {
 		return nil, err
 	}
 	return &task, nil
 }
 
 func (r *TaskRepository) Create(task domain.Task) (*domain.Task, error) {
-	task.ID = primitive.NewObjectID()
+	task.TaskID = primitive.NewObjectID()
 	task.CreatedAt = time.Now()
 	task.UpdatedAt = time.Now()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if _, err := r.Coll.InsertOne(ctx, task); err != nil {
+	_, err := r.Coll.InsertOne(r.ctx, task)
+	if err != nil {
 		return nil, err
 	}
 	return &task, nil
@@ -56,20 +60,38 @@ func (r *TaskRepository) Create(task domain.Task) (*domain.Task, error) {
 
 func (r *TaskRepository) Update(id primitive.ObjectID, task domain.Task) (*domain.Task, error) {
 	task.UpdatedAt = time.Now()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	update := bson.M{"$set": task}
-	if _, err := r.Coll.UpdateByID(ctx, id, update); err != nil {
+	update := bson.M{
+		"$set": bson.M{
+			"title":       task.Title,
+			"description": task.Description,
+			"due_date":    task.DueDate,
+			"status":      task.Status,
+			"updated_at":  task.UpdatedAt,
+		},
+	}
+	res, err := r.Coll.UpdateByID(r.ctx, id, update)
+	if err != nil {
 		return nil, err
 	}
-	return r.GetByID(id)
+	if res.MatchedCount == 0 {
+		return nil, errors.New("task not found")
+	}
+
+	// ✅ Don't reuse `task` name
+	updatedTask, err := r.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+	return updatedTask, nil
 }
 
 func (r *TaskRepository) Delete(id primitive.ObjectID) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if _, err := r.Coll.DeleteOne(ctx, bson.M{"_id": id}); err != nil {
+	res, err := r.Coll.DeleteOne(r.ctx, bson.M{"_id": id})
+	if err != nil {
 		return err
+	}
+	if res.DeletedCount == 0 {
+		return errors.New("task not found")
 	}
 	return nil
 }

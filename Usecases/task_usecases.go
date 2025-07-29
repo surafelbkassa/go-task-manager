@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	domain "github.com/surafelbkassa/go-task-manager/Domain"
-	"github.com/surafelbkassa/go-task-manager/Repositories"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -16,16 +15,15 @@ type TaskUseCaseInterface interface {
 	DeleteTask(string) error
 }
 
-// TaskUseCase implements business logic
 type TaskUseCase struct {
-	repo *Repositories.TaskRepository
+	repo domain.TaskRepository
 }
 
-// NewTaskUseCase constructor
-func NewTaskUseCase(r *Repositories.TaskRepository) *TaskUseCase {
+func NewTaskUseCase(r domain.TaskRepository) *TaskUseCase {
 	return &TaskUseCase{repo: r}
 }
 
+// ← ADD THIS
 func (u *TaskUseCase) GetTasks() ([]domain.Task, error) {
 	return u.repo.GetAll()
 }
@@ -33,7 +31,7 @@ func (u *TaskUseCase) GetTasks() ([]domain.Task, error) {
 func (u *TaskUseCase) GetTaskByID(id string) (*domain.Task, error) {
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return nil, errors.New("invalid ID format")
+		return nil, err
 	}
 	return u.repo.GetByID(objID)
 }

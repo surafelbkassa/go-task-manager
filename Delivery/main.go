@@ -1,33 +1,54 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"time"
 
-	"github.com/joho/godotenv"
-	"github.com/surafelbkassa/go-task-manager/Delivery/router"
+	"github.com/gin-gonic/gin"
+	"github.com/surafelbkassa/go-task-manager/Delivery/controllers"
+	routers "github.com/surafelbkassa/go-task-manager/Delivery/router"
 	"github.com/surafelbkassa/go-task-manager/Infrastructure"
 	"github.com/surafelbkassa/go-task-manager/Repositories"
 	"github.com/surafelbkassa/go-task-manager/Usecases"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func main() {
-	err := godotenv.Load()
+	r := gin.Default()
+	ctx := context.Background()
+
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017"))
 	if err != nil {
-		log.Println("Error loading .env file:", err)
+		log.Fatal(err)
 	}
-	Infrastructure.InitMongo()
-	Infrastructure.InitMongoUser()
+	if err := client.Ping(ctx, nil); err != nil {
+		log.Fatal(err)
+	}
 
-	taskRepo := Repositories.NewTaskRepository(Infrastructure.TaskCollection)
-	userRepo := Repositories.NewUserRepository(Infrastructure.UserCollection)
+	// returns the interface type
+	jwtSvc := Infrastructure.NewJWTService("secret-key", 24*time.Hour)
+	hasher := Infrastructure.NewPasswordService()
 
+	// repositories
+	taskRepo := Repositories.NewTaskRepository(client.Database("task_manager").Collection("tasks"))
+	userRepo := Repositories.NewUserRepository(client.Database("task_manager").Collection("users"), ctx)
+
+	// use‐cases
 	taskUC := Usecases.NewTaskUseCase(taskRepo)
-	userUC := Usecases.NewUserUseCase(userRepo)
+	userUC := Usecases.NewUserUseCase(userRepo, hasher)
 
-	router := router.SetupRouter(taskUC, userUC)
-	if err := router.Run("localhost:8080"); err != nil {
-		log.Fatal("Failed to start server:", err)
+	// controllers
+	taskCtrl := controllers.NewTaskController(taskUC)
+	userCtrl := controllers.NewUserController(userUC, jwtSvc)
+
+	// routes
+	routers.SetupRouter(r, jwtSvc, taskCtrl, userCtrl)
+
+	fmt.Println("Starting server on :8080")
+	if err := r.Run(":8080"); err != nil {
+		log.Fatal(fmt.Sprintf("Failed to start server: %v", err))
 	}
-	fmt.Println("Starting server on localhost:8080")
 }

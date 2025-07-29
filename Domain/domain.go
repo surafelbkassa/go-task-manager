@@ -16,14 +16,20 @@ type TaskRepository interface {
 }
 
 type UserRepository interface {
-	Register(User) (*User, error)
-	Login(email, password primitive.ObjectID) (string, error)
-	Promote(id primitive.ObjectID) (*User, error)
+	Create(user User) (*User, error)
+	GetByID(id primitive.ObjectID) (*User, error)
+	GetByEmail(email string) (*User, error)
+	GetAll() ([]*User, error)
+	//what is the return []*User and *User difference?
+	// Update(id primitive.ObjectID, user User) (*User, error)
+	// Delete(id primitive.ObjectID) error
+	// Login(email, password primitive.ObjectID) (string, error)
+	PromoteUser(id primitive.ObjectID) (*User, error)
 }
 
 // ???
 type Task struct {
-	ID          primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+	TaskID      primitive.ObjectID `bson:"_id,omitempty"`
 	Title       string             `json:"title" bson:"title"`
 	Description string             `json:"description" bson:"description"`
 	DueDate     time.Time          `json:"due_date" bson:"due_date"`
@@ -33,10 +39,20 @@ type Task struct {
 }
 
 type User struct {
-	ID        primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+	UserID    primitive.ObjectID `json:"id" bson:"_id,omitempty"`
 	Name      string             `json:"name" bson:"name"`
 	Email     string             `json:"email" bson:"email"`
 	Password  string             `json:"password" bson:"password"`
 	Role      string             `json:"role" bson:"role"` // e.g., "admin", "user"
 	CreatedAt time.Time          `json:"created_at" bson:"created_at"`
+}
+
+type PasswordHasher interface {
+	HashPassword(password string) (string, error)
+	CheckPasswordHash(password, hash string) bool
+}
+
+type JWTService interface {
+	GenerateToken(userID primitive.ObjectID, role string) (string, error)
+	ValidateToken(token string) (*primitive.ObjectID, string, error)
 }

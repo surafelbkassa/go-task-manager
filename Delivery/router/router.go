@@ -1,29 +1,27 @@
-package router
+package routers
 
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/surafelbkassa/go-task-manager/Delivery/controllers"
 	"github.com/surafelbkassa/go-task-manager/Infrastructure"
-	usecases "github.com/surafelbkassa/go-task-manager/Usecases"
 )
 
-func SetupRouter(taskUC usecases.TaskUseCaseInterface, userUC usecases.UserUseCaseInterface) *gin.Engine {
-	r := gin.Default()
-	ctr := controllers.NewController(taskUC, userUC)
+// ← accept the interface, not the concrete struct
+func SetupRouter(
+	r *gin.Engine,
+	jwtSvc Infrastructure.JWTServiceInterface,
+	taskCtrl *controllers.TaskController,
+	userCtrl *controllers.UserController,
+) {
+	auth := Infrastructure.AuthMiddleware
 
-	// Task routes
-	tasks := r.Group("/tasks")
-	tasks.Use(Infrastructure.AuthMiddleware("user"))
-	tasks.GET("", ctr.GetTasks)
-	tasks.POST("", ctr.CreateTask)
-	tasks.GET(":id", ctr.GetTaskByID)
-	tasks.PUT(":id", ctr.UpdateTask)
-	tasks.DELETE(":id", ctr.DeleteTask)
+	r.GET("/tasks", auth(jwtSvc, ""), taskCtrl.GetTasks)
+	r.GET("/tasks/:id", auth(jwtSvc, "user"), taskCtrl.GetTaskById)
+	r.POST("/tasks", auth(jwtSvc, "user"), taskCtrl.CreateTask)
+	r.PUT("/tasks/:id", auth(jwtSvc, "user"), taskCtrl.UpdatedTask)
+	r.DELETE("/tasks/:id", auth(jwtSvc, "user"), taskCtrl.DeleteTask)
 
-	// Auth routes
-	r.POST("/register", ctr.RegisterUser)
-	r.POST("/login", ctr.LoginUser)
-	r.POST("/promote/:id", Infrastructure.AuthMiddleware("admin"), ctr.PromoteUser)
-
-	return r
+	r.POST("/register", userCtrl.RegisterUser)
+	r.POST("/login", userCtrl.LoginUser)
+	r.POST("/promote/:id", auth(jwtSvc, "admin"), userCtrl.PromoteUser)
 }
