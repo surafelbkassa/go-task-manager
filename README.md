@@ -1,73 +1,107 @@
-# Task Manager API
-
-A simple Task Management REST API built with Go and the Gin Framework.
-
-## 🚀 Features
-
-- Create, Read, Update, Delete (CRUD) tasks
-- In-memory storage (no database yet)
-- Structured by MVC architecture
-- Tested with Postman and fully documented
-
-🛠️ Tech Stack
-
-- **Backend:** Go (Gin)
-- **Tools:** Postman
-
-## 📂 Folder Structure
-
-
-
-task_manager/
-├── main.go
-├── controllers/
-│   └── task\_controller.go
-├── models/
-│   └── task.go
-├── data/
-│   └── task\_service.go
-├── router/
-│   └── router.go
-├── docs/
-│   └── api\_documentation.md
-└── go.mod
-
-````
-
-## 🧪 Running Locally
-
-1. Clone the project  
-```bash
-git clone https://github.com/yourusername/go-task-manager.git
-cd go-task-manager
-````
-
-2. Run the app
-
-```bash
-go run main.go
-```
-
-3. Server runs at:
-
-```
-http://localhost:8080
-```
-
-## 📖 API Documentation
-
-Full API reference is available in [`docs/api_documentation.md`](./docs/api_documentation.md)
+Here’s your **updated `README.md`** reflecting your current progress, updated structure, CI test status, and tech improvements:
 
 ---
 
-## ✅ To Do
+```markdown
+# 🗂️ Task Manager API
 
-* Add persistent database support
-* User authentication
-* Swagger/OpenAPI integration
+A clean, modular, and test-driven Task Management REST API built with **Go** using the **Gin Framework**, following Clean Architecture principles.
+
+---
+
+## 🚀 Features
+
+- ✅ Full CRUD operations for tasks
+- ✅ Modular Clean Architecture (Domain, Usecases, Repositories, Delivery, Infrastructure)
+- ✅ MongoDB integration (using the official MongoDB Go driver)
+- ✅ Unit testing with `testify` and GitHub Actions CI
+- ✅ Code coverage report generation
+- 🛡️ Easy-to-extend for user auth, logging, middlewares, etc.
+
+---
+
+## 🧰 Tech Stack
+
+- **Language:** Go 1.24+
+- **Framework:** Gin
+- **Database:** MongoDB
+- **Testing:** `testify`, `mock`
+- **CI/CD:** GitHub Actions (automated test + coverage pipeline)
+
+---
+
+## 📁 Folder Structure
+
+```
+
+task\_manager/
+├── cmd/                # Entry point (main.go)
+├── Domain/             # Entities and core business logic
+├── Usecases/           # Application-specific use cases
+├── Repositories/       # Repository interfaces
+├── Infrastructure/     # External services (MongoDB)
+├── Delivery/           # HTTP Handlers (Gin)
+├── Tests/              # Unit tests
+├── coverage.out        # Code coverage output
+├── go.mod / go.sum     # Dependencies
+└── .github/workflows/  # GitHub Actions CI
+
+````
+
+---
+
+## 🧪 Running Locally
+
+```bash
+git clone https://github.com/surafelbkassa/go-task-manager.git
+cd go-task-manager
+
+# Run the app
+go run cmd/main.go
+````
+
+Server will run at:
+📍 `http://localhost:8080`
+
+---
+
+## 🔬 Testing
+
+```bash
+go test ./... -cover
+```
+
+### ✅ CI Status
+
+![Go Test CI](https://github.com/surafelbkassa/go-task-manager/actions/workflows/go-test.yml/badge.svg)
+
+> Automatically runs tests and generates code coverage reports on each push to `main`/`master`.
+
+---
+
+## 📖 API Documentation
+
+> Documentation will be generated using Swagger in the next version.
+
+---
+
+## 🗓️ Roadmap / TODO
+
+* [x] Add MongoDB persistent storage
+* [x] Set up unit testing with mocking
+* [x] Add GitHub Actions CI + code coverage
+* [ ] Implement user authentication
+* [ ] Add Swagger / OpenAPI spec
+* [ ] Dockerize the app
+* [ ] Deploy to Render/Vercel/Fly.io
 
 ---
 
 ## 📩 Contact
 
-If you want to reach out, feel free to DM me [@surafelbkassa](https://t.me/surafelbkassa)
+DM me on Telegram: [@surafelbkassa](https://t.me/surafelbkassa)
+GitHub: [github.com/surafelbkassa](https://github.com/surafelbkassa)
+
+---
+
+Built with 💻 in Go.
