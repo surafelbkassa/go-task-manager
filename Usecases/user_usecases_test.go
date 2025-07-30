@@ -15,9 +15,13 @@ type MockUserRepo struct {
 	mock.Mock
 }
 
-// GetByID implements domain.UserRepository.
 func (m *MockUserRepo) GetByID(id primitive.ObjectID) (*Domain.User, error) {
-	panic("unimplemented")
+	args := m.Called(id)
+	user := args.Get(0)
+	if user == nil {
+		return nil, args.Error(1)
+	}
+	return user.(*Domain.User), args.Error(1)
 }
 
 func (m *MockUserRepo) Create(u Domain.User) (*Domain.User, error) {
@@ -31,17 +35,29 @@ func (m *MockUserRepo) Create(u Domain.User) (*Domain.User, error) {
 
 func (m *MockUserRepo) GetByEmail(email string) (*Domain.User, error) {
 	args := m.Called(email)
-	return args.Get(0).(*Domain.User), args.Error(1)
+	user := args.Get(0)
+	if user == nil {
+		return nil, args.Error(1)
+	}
+	return user.(*Domain.User), args.Error(1)
 }
 
 func (m *MockUserRepo) PromoteUser(id primitive.ObjectID) (*Domain.User, error) {
 	args := m.Called(id)
-	return args.Get(0).(*Domain.User), args.Error(1)
+	user := args.Get(0)
+	if user == nil {
+		return nil, args.Error(1)
+	}
+	return user.(*Domain.User), args.Error(1)
 }
 
 func (m *MockUserRepo) GetAll() ([]*Domain.User, error) {
 	args := m.Called()
-	return args.Get(0).([]*Domain.User), args.Error(1)
+	users := args.Get(0)
+	if users == nil {
+		return nil, args.Error(1)
+	}
+	return users.([]*Domain.User), args.Error(1)
 }
 
 // --- Mock PasswordHasher ---
@@ -59,6 +75,8 @@ func (m *MockHasher) CheckPasswordHash(password, hash string) bool {
 	return args.Bool(0)
 }
 
+// --- Tests ---
+
 func TestRegisterUser_Success(t *testing.T) {
 	mockRepo := new(MockUserRepo)
 	mockHash := new(MockHasher)
@@ -66,7 +84,7 @@ func TestRegisterUser_Success(t *testing.T) {
 
 	mockRepo.On("GetByEmail", "a@b.com").Return(nil, nil)
 	mockHash.On("HashPassword", "pw").Return("hashed", nil)
-	mockRepo.On("Create", &Domain.User{
+	mockRepo.On("Create", Domain.User{
 		Name:     "Alice",
 		Email:    "a@b.com",
 		Password: "hashed",
@@ -75,6 +93,7 @@ func TestRegisterUser_Success(t *testing.T) {
 
 	err := uc.RegisterUser("Alice", "a@b.com", "pw")
 	assert.NoError(t, err)
+
 	mockRepo.AssertExpectations(t)
 	mockHash.AssertExpectations(t)
 }
@@ -85,6 +104,7 @@ func TestRegisterUser_ExistingEmail(t *testing.T) {
 	uc := NewUserUseCase(mockRepo, mockHash)
 
 	mockRepo.On("GetByEmail", "a@b.com").Return(&Domain.User{}, nil)
+
 	err := uc.RegisterUser("Alice", "a@b.com", "pw")
 	assert.EqualError(t, err, "email already registered")
 }
@@ -109,6 +129,7 @@ func TestLoginUser_Fail(t *testing.T) {
 	uc := NewUserUseCase(mockRepo, mockHash)
 
 	mockRepo.On("GetByEmail", "e@x.com").Return(nil, errors.New("not found"))
+
 	user, err := uc.LoginUser("e@x.com", "pw")
 	assert.Nil(t, user)
 	assert.EqualError(t, err, "invalid credentials")
@@ -121,6 +142,7 @@ func TestPromoteUser_Success(t *testing.T) {
 
 	id := primitive.NewObjectID()
 	expected := &Domain.User{Email: "z@z.com"}
+
 	mockRepo.On("PromoteUser", id).Return(expected, nil)
 
 	user, err := uc.PromoteUser(id)
@@ -138,4 +160,44 @@ func TestPromoteUser_Error(t *testing.T) {
 
 	_, err := uc.PromoteUser(id)
 	assert.EqualError(t, err, "oops")
+}
+func TestRegisterUser_HashError(t *testing.T) {
+	mockRepo := new(MockUserRepo)
+	mockHash := new(MockHasher)
+	uc := NewUserUseCase(mockRepo, mockHash)
+
+	mockRepo.On("GetByEmail", "a@b.com").Return(nil, nil)
+	mockHash.On("HashPassword", "pw").Return("", errors.New("hash failed"))
+
+	err := uc.RegisterUser("Alice", "a@b.com", "pw")
+	assert.EqualError(t, err, "hash failed")
+
+	mockRepo.AssertExpectations(t)
+	mockHash.AssertExpectations(t)
+}
+
+func TestLoginUser_InvalidPassword(t *testing.T) {
+	mockRepo := new(MockUserRepo)
+	mockHash := new(MockHasher)
+	uc := NewUserUseCase(mockRepo, mockHash)
+
+	stored := &Domain.User{Password: "hash"}
+	mockRepo.On("GetByEmail", "e@x.com").Return(stored, nil)
+	mockHash.On("CheckPasswordHash", "pw", "hash").Return(false)
+
+	user, err := uc.LoginUser("e@x.com", "pw")
+	assert.Nil(t, user)
+	assert.EqualError(t, err, "invalid credentials")
+}
+
+func TestLoginUser_UserNilButNoError(t *testing.T) {
+	mockRepo := new(MockUserRepo)
+	mockHash := new(MockHasher)
+	uc := NewUserUseCase(mockRepo, mockHash)
+
+	mockRepo.On("GetByEmail", "e@x.com").Return(nil, nil)
+
+	user, err := uc.LoginUser("e@x.com", "pw")
+	assert.Nil(t, user)
+	assert.EqualError(t, err, "invalid credentials")
 }

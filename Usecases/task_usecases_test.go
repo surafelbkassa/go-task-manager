@@ -40,6 +40,8 @@ func (m *MockTaskRepo) Delete(id primitive.ObjectID) error {
 	return m.Called(id).Error(0)
 }
 
+// ---------- TESTS ----------
+
 func TestGetTasks_Success(t *testing.T) {
 	mockRepo := new(MockTaskRepo)
 	uc := NewTaskUseCase(mockRepo)
@@ -59,7 +61,6 @@ func TestGetTasks_Error(t *testing.T) {
 	mockRepo := new(MockTaskRepo)
 	uc := NewTaskUseCase(mockRepo)
 
-	// 👇 FIXED: Cast nil to []Domain.Task to avoid panic
 	mockRepo.On("GetAll").Return([]Domain.Task(nil), errors.New("db fail"))
 
 	_, err := uc.GetTasks()
@@ -75,7 +76,6 @@ func TestGetTaskByID_Success(t *testing.T) {
 	expected := &Domain.Task{Title: "A"}
 	mockRepo.On("GetByID", id).Return(expected, nil)
 
-	// call via string-conversion path
 	result, err := uc.GetTaskByID(id.Hex())
 	assert.NoError(t, err)
 	assert.Equal(t, expected, result)
@@ -85,7 +85,7 @@ func TestGetTaskByID_Success(t *testing.T) {
 func TestGetTaskByID_InvalidID(t *testing.T) {
 	uc := NewTaskUseCase(new(MockTaskRepo))
 	_, err := uc.GetTaskByID("badhex")
-	assert.Error(t, err)
+	assert.EqualError(t, err, "the provided hex string is not a valid ObjectID")
 }
 
 func TestCreateTask_Success(t *testing.T) {
@@ -102,6 +102,18 @@ func TestCreateTask_Success(t *testing.T) {
 	mockRepo.AssertExpectations(t)
 }
 
+func TestCreateTask_Error(t *testing.T) {
+	mockRepo := new(MockTaskRepo)
+	uc := NewTaskUseCase(mockRepo)
+
+	task := Domain.Task{Title: "Fail"}
+	mockRepo.On("Create", task).Return((*Domain.Task)(nil), errors.New("insert fail"))
+
+	res, err := uc.CreateTask(task)
+	assert.Nil(t, res)
+	assert.EqualError(t, err, "insert fail")
+}
+
 func TestUpdateTask_Success(t *testing.T) {
 	mockRepo := new(MockTaskRepo)
 	uc := NewTaskUseCase(mockRepo)
@@ -115,6 +127,19 @@ func TestUpdateTask_Success(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, updated, res)
 	mockRepo.AssertExpectations(t)
+}
+
+func TestUpdateTask_DBError(t *testing.T) {
+	mockRepo := new(MockTaskRepo)
+	uc := NewTaskUseCase(mockRepo)
+
+	id := primitive.NewObjectID()
+	task := Domain.Task{Title: "Fail"}
+	mockRepo.On("Update", id, task).Return((*Domain.Task)(nil), errors.New("db error"))
+
+	res, err := uc.UpdateTask(id.Hex(), task)
+	assert.Nil(t, res)
+	assert.EqualError(t, err, "db error")
 }
 
 func TestUpdateTask_InvalidID(t *testing.T) {
@@ -139,4 +164,16 @@ func TestDeleteTask_InvalidID(t *testing.T) {
 	uc := NewTaskUseCase(new(MockTaskRepo))
 	err := uc.DeleteTask("xxx")
 	assert.EqualError(t, err, "invalid ID format")
+}
+
+func TestGetTaskByID_DBError(t *testing.T) {
+	mockRepo := new(MockTaskRepo)
+	uc := NewTaskUseCase(mockRepo)
+
+	id := primitive.NewObjectID()
+	mockRepo.On("GetByID", id).Return((*Domain.Task)(nil), errors.New("not found"))
+
+	res, err := uc.GetTaskByID(id.Hex())
+	assert.Nil(t, res)
+	assert.EqualError(t, err, "not found")
 }
